@@ -95,7 +95,10 @@ func (l *Limit) DeleteOrder(o *Order) {
 }
 
 func (l *Limit) Fill(o *Order) []Match {
-	matches := []Match{}
+	var (
+		matches        = []Match{}
+		ordersToDelete = []*Order{}
+	)
 
 	for _, order := range l.Orders {
 		match := l.fillOrder(order, o)
@@ -103,9 +106,17 @@ func (l *Limit) Fill(o *Order) []Match {
 
 		l.TotalVolume -= match.SizeFilled
 
+		if order.IsFilled() {
+			ordersToDelete = append(ordersToDelete, order)
+		}
+
 		if o.IsFilled() {
 			break
 		}
+	}
+
+	for _, order := range ordersToDelete {
+		l.DeleteOrder(order)
 	}
 
 	return matches
@@ -171,8 +182,25 @@ func (ob *Orderbook) PlaceMarketOrder(o *Order) []Match {
 		for _, limit := range ob.Asks() {
 			limitMatches := limit.Fill(o)
 			matches = append(matches, limitMatches...)
+
+			if len(limit.Orders) == 0 {
+				ob.clearLimit(true, limit)
+			}
 		}
+
 	} else {
+
+		if o.Size > ob.BidTotalVolume() {
+			panic(fmt.Errorf("not enough volume [size: %.2f] for market order [size :%2.f]", ob.BidTotalVolume(), o.Size))
+		}
+		for _, limit := range ob.Bids() {
+			limitMatches := limit.Fill(o)
+			matches = append(matches, limitMatches...)
+
+			if len(limit.Orders) == 0 {
+				ob.clearLimit(true, limit)
+			}
+		}
 	}
 
 	return matches
@@ -189,7 +217,6 @@ func (ob *Orderbook) PlaceLimitOrder(price float64, o *Order) {
 
 	if limit == nil {
 		limit = NewLimit(price)
-		limit.AddOrder(o)
 		if o.Bid {
 			ob.bids = append(ob.bids, limit)
 			ob.BidLimits[price] = limit
@@ -198,6 +225,33 @@ func (ob *Orderbook) PlaceLimitOrder(price float64, o *Order) {
 			ob.BidLimits[price] = limit
 		}
 	}
+
+	limit.AddOrder(o)
+}
+
+func (ob *Orderbook) clearLimit(bid bool, l *Limit) {
+	if bid {
+		delete(ob.BidLimits, l.Price)
+		for i := 0; i < len(ob.bids); i++ {
+			if ob.bids[i] == l {
+				ob.bids[i] = ob.bids[len(ob.bids)-1]
+				ob.bids = ob.bids[:len(ob.bids)-1]
+			}
+		}
+	} else {
+		delete(ob.AskLimits, l.Price)
+		for i := 0; i < len(ob.asks); i++ {
+			if ob.asks[i] == l {
+				ob.asks[i] = ob.asks[len(ob.asks)-1]
+				ob.asks = ob.asks[:len(ob.asks)-1]
+			}
+		}
+	}
+}
+
+func (ob *Orderbook) CancelOrder(o *Order) {
+	limit := o.Limit
+	limit.DeleteOrder(o)
 }
 
 func (ob *Orderbook) BidTotalVolume() float64 {
@@ -227,5 +281,5 @@ func (ob *Orderbook) Asks() []*Limit {
 
 func (ob *Orderbook) Bids() []*Limit {
 	sort.Sort(ByBestBid{ob.bids})
-	return ob.asks
+	return ob.bids
 }

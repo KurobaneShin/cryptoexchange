@@ -55,3 +55,40 @@ func TestPlaceMarketOrder(t *testing.T) {
 
 	assert.True(t, buyOrder.IsFilled())
 }
+
+func TestPlarceMarketOrderMultiFill(t *testing.T) {
+	ob := NewOrderbook()
+
+	buyOrderA := NewOrder(true, 5)
+	buyOrderB := NewOrder(true, 8)
+	buyOrderC := NewOrder(true, 10)
+	buyOrderD := NewOrder(true, 1)
+
+	ob.PlaceLimitOrder(10_000, buyOrderA)
+	ob.PlaceLimitOrder(9_000, buyOrderB)
+	ob.PlaceLimitOrder(5_000, buyOrderC)
+	ob.PlaceLimitOrder(5_000, buyOrderD)
+
+	assert.Equal(t, 24.00, ob.BidTotalVolume())
+
+	sellOrder := NewOrder(false, 20)
+	matches := ob.PlaceMarketOrder(sellOrder)
+
+	assert.Equal(t, ob.BidTotalVolume(), 4.0)
+	assert.Equal(t, 3, len(matches))
+	assert.Equal(t, 1, len(ob.bids))
+}
+
+func TestCancelOrder(t *testing.T) {
+	ob := NewOrderbook()
+
+	buyOrder := NewOrder(true, 5)
+
+	ob.PlaceLimitOrder(10_000, buyOrder)
+
+	assert.Equal(t, 5.0, ob.BidTotalVolume())
+
+	ob.CancelOrder(buyOrder)
+
+	assert.Equal(t, 0.0, ob.BidTotalVolume())
+}
