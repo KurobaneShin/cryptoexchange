@@ -7,11 +7,13 @@ import (
 	"strconv"
 
 	"github.com/KurobaneShin/crypto-exchange/orderbook"
+	"github.com/KurobaneShin/crypto-exchange/util"
 	echo "github.com/labstack/echo/v4"
 )
 
 func main() {
 	e := echo.New()
+	e.HTTPErrorHandler = httpErrorHandler
 	ex := NewExchange()
 
 	e.GET("/book/:market", ex.handleGetBook)
@@ -21,6 +23,10 @@ func main() {
 	e.Start(":3000")
 
 	fmt.Println("working")
+}
+
+func httpErrorHandler(err error, c echo.Context) {
+	fmt.Println(err)
 }
 
 type OrderType string
@@ -63,6 +69,12 @@ type Order struct {
 	Size      float64
 	Bid       bool
 	Timestamp int64
+}
+
+type MatchedOrder struct {
+	ID    int64
+	Price float64
+	Size  float64
 }
 
 type OrderbookData struct {
@@ -119,37 +131,11 @@ func (ex *Exchange) cancelOrder(c echo.Context) error {
 	id, _ := strconv.Atoi(idStr)
 
 	ob := ex.orderbooks[MarketETH]
-	orderCanceled := false
+	order := ob.Orders[int64(id)]
 
-	for _, limit := range ob.Asks() {
-		for _, order := range limit.Orders {
-			if order.ID == int64(id) {
-				ob.CancelOrder(order)
-				orderCanceled = true
+	ob.CancelOrder(order)
 
-				if orderCanceled {
-					return c.JSON(http.StatusOK, map[string]any{"msg": "order canceled"})
-				}
-			}
-		}
-
-	}
-
-	for _, limit := range ob.Bids() {
-		for _, order := range limit.Orders {
-			if order.ID == int64(id) {
-				ob.CancelOrder(order)
-				orderCanceled = true
-
-				if orderCanceled {
-					return c.JSON(http.StatusOK, map[string]any{"msg": "order canceled"})
-				}
-			}
-		}
-
-	}
-
-	return nil
+	return c.JSON(200, map[string]any{"msg": "order cancelled"})
 }
 
 func (ex *Exchange) handlePlaceOrder(c echo.Context) error {
@@ -168,5 +154,19 @@ func (ex *Exchange) handlePlaceOrder(c echo.Context) error {
 	}
 
 	matches := ob.PlaceMarketOrder(order)
-	return c.JSON(200, map[string]any{"msg": "limit order placed", "matches": len(matches)})
+	matchedOrders := make([]*MatchedOrder, len(matches))
+	for i := 0; i < len(matchedOrders); i++ {
+		var (
+			match = matches[i]
+			isAsk = match.Ask != nil
+		)
+
+		id := util.Ternary(isAsk, match.Ask.ID, match.Bid.ID)
+		matchedOrders[i] = &MatchedOrder{
+			Size:  match.SizeFilled,
+			Price: match.Price,
+			ID:    id,
+		}
+	}
+	return c.JSON(200, map[string]any{"msg": "limit order placed", "matches": matchedOrders})
 }

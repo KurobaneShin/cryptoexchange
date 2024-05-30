@@ -31,6 +31,9 @@ func TestPlaceLimitOrder(t *testing.T) {
 	ob.PlaceLimitOrder(10_000, sellOrder1)
 	ob.PlaceLimitOrder(9_000, sellOrder2)
 
+	assert.Equal(t, 2, len(ob.Orders))
+	assert.Equal(t, sellOrder1, ob.Orders[sellOrder1.ID])
+
 	assert.Equal(t, len(ob.asks), 2)
 }
 
@@ -81,14 +84,14 @@ func TestPlarceMarketOrderMultiFill(t *testing.T) {
 
 func TestCancelOrder(t *testing.T) {
 	ob := NewOrderbook()
-
 	buyOrder := NewOrder(true, 5)
-
 	ob.PlaceLimitOrder(10_000, buyOrder)
 
 	assert.Equal(t, 5.0, ob.BidTotalVolume())
 
 	ob.CancelOrder(buyOrder)
-
 	assert.Equal(t, 0.0, ob.BidTotalVolume())
+
+	_, ok := ob.Orders[buyOrder.ID]
+	assert.False(t, ok)
 }
