@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/KurobaneShin/crypto-exchange/orderbook"
 	echo "github.com/labstack/echo/v4"
@@ -15,6 +16,7 @@ func main() {
 
 	e.GET("/book/:market", ex.handleGetBook)
 	e.POST("/order", ex.handlePlaceOrder)
+	e.DELETE("/order/:id", ex.cancelOrder)
 
 	e.Start(":3000")
 
@@ -56,6 +58,7 @@ type PlaceOrderRequest struct {
 }
 
 type Order struct {
+	ID        int64
 	Price     float64
 	Size      float64
 	Bid       bool
@@ -85,6 +88,7 @@ func (ex *Exchange) handleGetBook(c echo.Context) error {
 	for _, limit := range ob.Asks() {
 		for _, order := range limit.Orders {
 			o := Order{
+				ID:        order.ID,
 				Price:     limit.Price,
 				Size:      order.Size,
 				Bid:       order.Bid,
@@ -97,6 +101,7 @@ func (ex *Exchange) handleGetBook(c echo.Context) error {
 	for _, limit := range ob.Bids() {
 		for _, order := range limit.Orders {
 			o := Order{
+				ID:        order.ID,
 				Price:     limit.Price,
 				Size:      order.Size,
 				Bid:       order.Bid,
@@ -107,6 +112,44 @@ func (ex *Exchange) handleGetBook(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, orderbookData)
+}
+
+func (ex *Exchange) cancelOrder(c echo.Context) error {
+	idStr := c.Param("id")
+	id, _ := strconv.Atoi(idStr)
+
+	ob := ex.orderbooks[MarketETH]
+	orderCanceled := false
+
+	for _, limit := range ob.Asks() {
+		for _, order := range limit.Orders {
+			if order.ID == int64(id) {
+				ob.CancelOrder(order)
+				orderCanceled = true
+
+				if orderCanceled {
+					return c.JSON(http.StatusOK, map[string]any{"msg": "order canceled"})
+				}
+			}
+		}
+
+	}
+
+	for _, limit := range ob.Bids() {
+		for _, order := range limit.Orders {
+			if order.ID == int64(id) {
+				ob.CancelOrder(order)
+				orderCanceled = true
+
+				if orderCanceled {
+					return c.JSON(http.StatusOK, map[string]any{"msg": "order canceled"})
+				}
+			}
+		}
+
+	}
+
+	return nil
 }
 
 func (ex *Exchange) handlePlaceOrder(c echo.Context) error {
