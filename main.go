@@ -63,8 +63,10 @@ type Order struct {
 }
 
 type OrderbookData struct {
-	Asks []*Order
-	Bids []*Order
+	TotalBidVolume float64
+	TotalAskVolume float64
+	Asks           []*Order
+	Bids           []*Order
 }
 
 func (ex *Exchange) handleGetBook(c echo.Context) error {
@@ -75,8 +77,10 @@ func (ex *Exchange) handleGetBook(c echo.Context) error {
 	}
 
 	orderbookData := OrderbookData{
-		Asks: []*Order{},
-		Bids: []*Order{},
+		TotalBidVolume: ob.BidTotalVolume(),
+		TotalAskVolume: ob.AskTotalVolume(),
+		Asks:           []*Order{},
+		Bids:           []*Order{},
 	}
 	for _, limit := range ob.Asks() {
 		for _, order := range limit.Orders {
@@ -115,6 +119,11 @@ func (ex *Exchange) handlePlaceOrder(c echo.Context) error {
 	ob := ex.orderbooks[market]
 	order := orderbook.NewOrder(placeOrderData.Bid, placeOrderData.Size)
 
-	ob.PlaceLimitOrder(placeOrderData.Price, order)
-	return c.JSON(200, map[string]any{"msg": "order placed"})
+	if placeOrderData.Type == LimitOrder {
+		ob.PlaceLimitOrder(placeOrderData.Price, order)
+		return c.JSON(200, map[string]any{"msg": "limit order placed"})
+	}
+
+	matches := ob.PlaceMarketOrder(order)
+	return c.JSON(200, map[string]any{"msg": "limit order placed", "matches": len(matches)})
 }
