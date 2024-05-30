@@ -189,7 +189,6 @@ func (ob *Orderbook) PlaceMarketOrder(o *Order) []Match {
 		}
 
 	} else {
-
 		if o.Size > ob.BidTotalVolume() {
 			panic(fmt.Errorf("not enough volume [size: %.2f] for market order [size :%2.f]", ob.BidTotalVolume(), o.Size))
 		}
