@@ -9,9 +9,9 @@ import (
 
 func TestLimit(t *testing.T) {
 	l := NewLimit(10_000)
-	buyOrderA := NewOrder(true, 5)
-	buyOrderB := NewOrder(true, 8)
-	buyOrderC := NewOrder(true, 10)
+	buyOrderA := NewOrder(true, 5, 0)
+	buyOrderB := NewOrder(true, 8, 0)
+	buyOrderC := NewOrder(true, 10, 0)
 
 	l.AddOrder(buyOrderA)
 	l.AddOrder(buyOrderB)
@@ -25,8 +25,8 @@ func TestLimit(t *testing.T) {
 func TestPlaceLimitOrder(t *testing.T) {
 	ob := NewOrderbook()
 
-	sellOrder1 := NewOrder(false, 10)
-	sellOrder2 := NewOrder(false, 5)
+	sellOrder1 := NewOrder(false, 10, 0)
+	sellOrder2 := NewOrder(false, 5, 0)
 
 	ob.PlaceLimitOrder(10_000, sellOrder1)
 	ob.PlaceLimitOrder(9_000, sellOrder2)
@@ -40,10 +40,10 @@ func TestPlaceLimitOrder(t *testing.T) {
 func TestPlaceMarketOrder(t *testing.T) {
 	ob := NewOrderbook()
 
-	sellOrder := NewOrder(false, 20)
+	sellOrder := NewOrder(false, 20, 0)
 	ob.PlaceLimitOrder(10_000, sellOrder)
 
-	buyOrder := NewOrder(true, 10)
+	buyOrder := NewOrder(true, 10, 0)
 
 	matches := ob.PlaceMarketOrder(buyOrder)
 
@@ -62,10 +62,10 @@ func TestPlaceMarketOrder(t *testing.T) {
 func TestPlarceMarketOrderMultiFill(t *testing.T) {
 	ob := NewOrderbook()
 
-	buyOrderA := NewOrder(true, 5)
-	buyOrderB := NewOrder(true, 8)
-	buyOrderC := NewOrder(true, 10)
-	buyOrderD := NewOrder(true, 1)
+	buyOrderA := NewOrder(true, 5, 0)
+	buyOrderB := NewOrder(true, 8, 0)
+	buyOrderC := NewOrder(true, 10, 0)
+	buyOrderD := NewOrder(true, 1, 0)
 
 	ob.PlaceLimitOrder(10_000, buyOrderA)
 	ob.PlaceLimitOrder(9_000, buyOrderB)
@@ -74,7 +74,7 @@ func TestPlarceMarketOrderMultiFill(t *testing.T) {
 
 	assert.Equal(t, 24.00, ob.BidTotalVolume())
 
-	sellOrder := NewOrder(false, 20)
+	sellOrder := NewOrder(false, 20, 0)
 	matches := ob.PlaceMarketOrder(sellOrder)
 
 	assert.Equal(t, ob.BidTotalVolume(), 4.0)
@@ -84,7 +84,7 @@ func TestPlarceMarketOrderMultiFill(t *testing.T) {
 
 func TestCancelOrder(t *testing.T) {
 	ob := NewOrderbook()
-	buyOrder := NewOrder(true, 5)
+	buyOrder := NewOrder(true, 5, 0)
 	ob.PlaceLimitOrder(10_000, buyOrder)
 
 	assert.Equal(t, 5.0, ob.BidTotalVolume())
