@@ -217,21 +217,9 @@ func (ex *Exchange) handlePlaceLimitOrder(market Market, price float64, order *o
 	ob := ex.orderbooks[market]
 	ob.PlaceLimitOrder(price, order)
 
-	user, ok := ex.Users[order.UserID]
-	if !ok {
-		return fmt.Errorf("user not found: %d", user.ID)
-	}
+	log.Printf("new LIMIT order => type: [%t] | price [%.2f] | size [%.2f]", order.Bid, order.Limit.Price, order.Size)
 
-	exchangePubKey := ex.PrivateKey.Public()
-	publicKeyECDSA, ok := exchangePubKey.(*ecdsa.PublicKey)
-	if !ok {
-		return fmt.Errorf("error casting public key to ECDSA")
-	}
-	toAddress := crypto.PubkeyToAddress(*publicKeyECDSA)
-
-	amount := big.NewInt(int64(order.Size))
-
-	return eth.TransferETH(ex.Client, user.PrivateKey, toAddress, amount)
+	return nil
 }
 
 func (ex *Exchange) handlePlaceOrder(c echo.Context) error {

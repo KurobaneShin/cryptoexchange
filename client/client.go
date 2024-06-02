@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/KurobaneShin/crypto-exchange/server"
@@ -21,13 +20,20 @@ func NewClient() *Client {
 	}
 }
 
-func (c *Client) PlaceLimitOrder() error {
+type PlaceLimitOrderParams struct {
+	UserID int64
+	Bid    bool
+	Price  float64
+	Size   float64
+}
+
+func (c *Client) PlaceLimitOrder(p *PlaceLimitOrderParams) error {
 	params := &server.PlaceOrderRequest{
-		UserID: 8888,
+		UserID: p.UserID,
 		Type:   server.LimitOrder,
-		Bid:    true,
-		Size:   4000.0,
-		Price:  4000.0,
+		Bid:    p.Bid,
+		Size:   p.Size,
+		Price:  p.Price,
 		Market: server.MarketETH,
 	}
 
@@ -39,13 +45,12 @@ func (c *Client) PlaceLimitOrder() error {
 	e := Endpoint + "/order"
 	req, err := http.NewRequest(http.MethodPost, e, bytes.NewReader(body))
 
-	res,err := c.Do(req)
-
+	_, err = c.Do(req)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%+v", res)
+	// fmt.Printf("%+v", res)
 
 	return nil
 }

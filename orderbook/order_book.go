@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sort"
+	"sync"
 	"time"
 
 	"github.com/KurobaneShin/crypto-exchange/util"
@@ -167,6 +168,7 @@ type Orderbook struct {
 	asks []*Limit
 	bids []*Limit
 
+	mu        sync.RWMutex
 	AskLimits map[float64]*Limit
 	BidLimits map[float64]*Limit
 	Orders    map[int64]*Order
@@ -187,7 +189,7 @@ func (ob *Orderbook) PlaceMarketOrder(o *Order) []Match {
 
 	if o.Bid {
 		if o.Size > ob.AskTotalVolume() {
-			panic(fmt.Errorf("not enough volume [size: %.2f] for market order [size :%2.f]", ob.AskTotalVolume(), o.Size))
+			panic(fmt.Errorf("not enough volume [size: %.2f] for market order [size :%.2f]", ob.AskTotalVolume(), o.Size))
 		}
 		for _, limit := range ob.Asks() {
 			limitMatches := limit.Fill(o)
@@ -200,7 +202,7 @@ func (ob *Orderbook) PlaceMarketOrder(o *Order) []Match {
 		return matches
 	}
 	if o.Size > ob.BidTotalVolume() {
-		panic(fmt.Errorf("not enough volume [size: %.2f] for market order [size :%2.f]", ob.BidTotalVolume(), o.Size))
+		panic(fmt.Errorf("not enough volume [size: %.2f] for market order [size :%.2f]", ob.BidTotalVolume(), o.Size))
 	}
 	for _, limit := range ob.Bids() {
 		limitMatches := limit.Fill(o)
@@ -215,6 +217,9 @@ func (ob *Orderbook) PlaceMarketOrder(o *Order) []Match {
 }
 
 func (ob *Orderbook) PlaceLimitOrder(price float64, o *Order) {
+	ob.mu.Lock()
+	defer ob.mu.Unlock()
+
 	limit := util.Ternary(o.Bid, ob.BidLimits[price], ob.AskLimits[price])
 	if limit != nil {
 		limit.AddOrder(o)
@@ -255,7 +260,6 @@ func (ob *Orderbook) clearLimit(bid bool, l *Limit) {
 			ob.asks = ob.asks[:len(ob.asks)-1]
 		}
 	}
-
 }
 
 func (ob *Orderbook) CancelOrder(o *Order) {
