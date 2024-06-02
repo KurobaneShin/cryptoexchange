@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/KurobaneShin/crypto-exchange/client"
@@ -23,9 +24,12 @@ func main() {
 
 	go func() {
 		for {
-			if err := c.PlaceLimitOrder(&bidParams); err != nil {
+			res, err := c.PlaceLimitOrder(&bidParams)
+			if err != nil {
 				panic(err)
 			}
+
+			fmt.Println("orderId =>", res.OrderID)
 
 			time.Sleep(time.Second * 1)
 		}
@@ -40,10 +44,12 @@ func main() {
 
 	go func() {
 		for {
-			if err := c.PlaceLimitOrder(&askParams); err != nil {
+			res, err := c.PlaceLimitOrder(&askParams)
+			if err != nil {
 				panic(err)
 			}
 
+			fmt.Println("orderId =>", res.OrderID)
 			time.Sleep(time.Second * 1)
 		}
 	}()
