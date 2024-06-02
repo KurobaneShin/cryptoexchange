@@ -1,4 +1,4 @@
-package main
+package eth
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-func transferETH(client *ethclient.Client, fromPrivKey *ecdsa.PrivateKey, to common.Address, amount *big.Int) error {
+func TransferETH(client *ethclient.Client, fromPrivKey *ecdsa.PrivateKey, to common.Address, amount *big.Int) error {
 	ctx := context.Background()
 	publicKey := fromPrivKey.Public()
 	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
@@ -34,12 +34,11 @@ func transferETH(client *ethclient.Client, fromPrivKey *ecdsa.PrivateKey, to com
 	}
 
 	tx := types.NewTransaction(nonce, to, amount, gasLimit, gasPrice, nil)
-	//1337 is the ganache server chain id
+	// 1337 is the ganache server chain id
 	chainID := big.NewInt(1337)
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), fromPrivKey)
 	if err != nil {
 		log.Fatal(err)
 	}
 	return client.SendTransaction(ctx, signedTx)
-
 }
