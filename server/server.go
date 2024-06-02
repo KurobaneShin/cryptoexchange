@@ -194,9 +194,13 @@ func (ex *Exchange) cancelOrder(c echo.Context) error {
 }
 
 func (ex *Exchange) handlePlaceMarketOrder(market Market, order *orderbook.Order) ([]orderbook.Match, []*MatchedOrder) {
-	ob := ex.orderbooks[market]
-	matches := ob.PlaceMarketOrder(order)
-	matchedOrders := make([]*MatchedOrder, len(matches))
+	var (
+		ob              = ex.orderbooks[market]
+		matches         = ob.PlaceMarketOrder(order)
+		matchedOrders   = make([]*MatchedOrder, len(matches))
+		totalSizeFilled = 0.0
+		sumPrice        = 0.0
+	)
 	for i := 0; i < len(matchedOrders); i++ {
 		var (
 			match = matches[i]
@@ -209,7 +213,13 @@ func (ex *Exchange) handlePlaceMarketOrder(market Market, order *orderbook.Order
 			Price: match.Price,
 			ID:    id,
 		}
+		totalSizeFilled += match.SizeFilled
+		sumPrice += match.Price
 	}
+	avgPrice := sumPrice / float64(len(matches))
+
+	log.Printf("filled maret order => %d | size: [%.2f] | avgPrice: %.2f", order.ID, totalSizeFilled, avgPrice)
+
 	return matches, matchedOrders
 }
 
@@ -222,7 +232,7 @@ func (ex *Exchange) handlePlaceLimitOrder(market Market, price float64, order *o
 	return nil
 }
 
-type PlaceLimitOrderResponse struct {
+type PlaceOrderResponse struct {
 	OrderID int64
 }
 
@@ -234,25 +244,25 @@ func (ex *Exchange) handlePlaceOrder(c echo.Context) error {
 
 	market := Market(placeOrderData.Market)
 	order := orderbook.NewOrder(placeOrderData.Bid, placeOrderData.Size, placeOrderData.UserID)
+	response := &PlaceOrderResponse{
+		OrderID: order.ID,
+	}
 
 	if placeOrderData.Type == LimitOrder {
 		if err := ex.handlePlaceLimitOrder(market, placeOrderData.Price, order); err != nil {
 			return c.JSON(http.StatusBadRequest, map[string]any{"msg": "error"})
 		}
 
-		response := &PlaceLimitOrderResponse{
-			OrderID: order.ID,
-		}
 		return c.JSON(http.StatusOK, response)
 	}
 
-	matches, matchedOrders := ex.handlePlaceMarketOrder(market, order)
+	matches, _ := ex.handlePlaceMarketOrder(market, order)
 
 	if err := ex.handleMatches(matches); err != nil {
 		return err
 	}
 
-	return c.JSON(http.StatusOK, map[string]any{"matches": matchedOrders})
+	return c.JSON(http.StatusOK, response)
 }
 
 func (ex *Exchange) handleMatches(matches []orderbook.Match) error {

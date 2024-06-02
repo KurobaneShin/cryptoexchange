@@ -15,45 +15,52 @@ func main() {
 
 	c := client.NewClient()
 
-	bidParams := client.PlaceLimitOrderParams{
-		UserID: 8888,
-		Bid:    true,
-		Price:  10_000,
-		Size:   1000,
-	}
-
 	go func() {
 		for {
-			res, err := c.PlaceLimitOrder(&bidParams)
+
+			limitOrderParams := &client.PlaceOrderParams{
+				UserID: 8888,
+				Bid:    false,
+				Price:  10_000,
+				Size:   500_000,
+			}
+
+			res, err := c.PlaceLimitOrder(limitOrderParams)
 			if err != nil {
 				panic(err)
 			}
 
-			fmt.Println("orderId =>", res.OrderID)
+			fmt.Println("placed limit order, orderId =>", res.OrderID)
 
-			if err := c.CancelOrder(res.OrderID); err != nil {
-				panic(err)
+			otherLimitOrderParams := &client.PlaceOrderParams{
+				UserID: 8888,
+				Bid:    false,
+				Price:  9_000,
+				Size:   500_000,
 			}
 
-			time.Sleep(time.Second * 1)
-		}
-	}()
-
-	askParams := client.PlaceLimitOrderParams{
-		UserID: 8888,
-		Bid:    false,
-		Price:  8_000,
-		Size:   1000,
-	}
-
-	go func() {
-		for {
-			res, err := c.PlaceLimitOrder(&askParams)
+			_, err = c.PlaceLimitOrder(otherLimitOrderParams)
 			if err != nil {
 				panic(err)
 			}
 
-			fmt.Println("orderId =>", res.OrderID)
+			// time.Sleep(time.Second * 1)
+			// if err := c.CancelOrder(res.OrderID); err != nil {
+			// 	panic(err)
+			// }
+
+			marketOrderParams := &client.PlaceOrderParams{
+				UserID: 7777,
+				Bid:    true,
+				Size:   1_000_000,
+			}
+
+			res, err = c.PlaceMarketOrder(marketOrderParams)
+			if err != nil {
+				panic(err)
+			}
+
+			fmt.Println("placed market order, orderId =>", res.OrderID)
 			time.Sleep(time.Second * 1)
 		}
 	}()
