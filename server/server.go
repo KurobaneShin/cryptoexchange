@@ -106,6 +106,7 @@ func StartServer() {
 	e.GET("/book/:market", ex.handleGetBook)
 	e.POST("/order", ex.handlePlaceOrder)
 	e.DELETE("/order/:id", ex.cancelOrder)
+	e.GET("/book/:market/bid", ex.handleGetBestBid)
 
 	balance, _ := ex.Client.BalanceAt(context.Background(), common.HexToAddress(userAddress), nil)
 	fmt.Println(balance)
@@ -179,6 +180,25 @@ func (ex *Exchange) handleGetBook(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, orderbookData)
+}
+
+type PriceResponse struct {
+	Price float64
+}
+
+func (ex *Exchange) handleGetBestBid(c echo.Context) error {
+	market := Market(c.Param("market"))
+
+	ob := ex.orderbooks[market]
+	if len(ob.Bids()) == 0 {
+		return fmt.Errorf("no bids")
+	}
+	bestBidPrice := ob.Bids()[0].Price
+	pr := PriceResponse{
+		Price: bestBidPrice,
+	}
+
+	return c.JSON(http.StatusOK, pr)
 }
 
 func (ex *Exchange) cancelOrder(c echo.Context) error {
